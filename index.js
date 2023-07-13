@@ -3,10 +3,12 @@ const app = express();
 require('dotenv').config();
 const http = require('http');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const { Server } = require('socket.io');
 const port = process.env.PORT || 5000;
 
 // Import route files
+const jwtRoutes = require('./routes/jwt')
 const userRoutes = require('./routes/users');
 const messageRoutes = require('./routes/messages');
 
@@ -15,6 +17,7 @@ app.use(cors());
 app.use(express.json());
 
 // Use route files as middleware
+app.use('/jwt', jwtRoutes);
 app.use('/users', userRoutes);
 app.use('/messages', messageRoutes);
 

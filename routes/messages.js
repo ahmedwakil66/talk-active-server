@@ -2,13 +2,20 @@ const express = require('express');
 const router = express.Router();
 const connect = require('../db');
 const { ObjectId } = require('mongodb');
+const { verifyJWT } = require('../verificationMiddleware');
 
-router.get('/:participantIds', async (req, res) => {
-    const { messageCollection } = await connect();
+// send specific conversation messages of the user
+router.get('/:participantIds', verifyJWT, async (req, res) => {
     if(!req.params.participantIds) {
         return res.send({ error: true, message: "Invalid participants ids" })
     }
     const participantIds = req.params.participantIds.split('+');
+
+    if(!participantIds.includes(req.decoded.id)){ //verifying same users
+        res.status(403).send({error: true, messages: 'forbidden access'})
+    }
+
+    const { messageCollection } = await connect();
     const messages = await messageCollection.find(
         {participants: {$all: participantIds}},
         {
@@ -19,7 +26,7 @@ router.get('/:participantIds', async (req, res) => {
 });
 
 //when a user send message add it in database
-router.post('/', async (req, res) => {
+router.post('/', verifyJWT, async (req, res) => {
     const { messageCollection } = await connect();
     const newMessage = req.body;
     if (!newMessage) {
@@ -32,10 +39,15 @@ router.post('/', async (req, res) => {
 
 
 //get the conversation list with the latest one first
-router.get('/list/:userId', async (req, res) => {
+router.get('/list/:userId', verifyJWT, async (req, res) => {
+    const userId = req.params.userId;
+
+    if (userId !== req.decoded.id) { //verifying same user
+        return res.status(403).send({ error: true, message: 'forbidden access' });
+    }
+
     const { messageCollection } = await connect();
     const { userCollection } = await connect();
-    const userId = req.params.userId;
     const conversations = await messageCollection.aggregate([
         {
             $match: {
